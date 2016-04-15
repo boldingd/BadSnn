@@ -60,3 +60,6 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+
+#ME: .dat files, which this code produces
+*.dat
