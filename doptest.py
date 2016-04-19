@@ -25,12 +25,12 @@ import random
 #   dopamine system
 
 class DopamineSynapseConnector:
-    def __init__(self, delay, min_efficiency, max_efficiency, dopamine_manager):
+    def __init__(self, delay, min_efficiency, max_efficiency, reward_manager):
         self.delay = delay
         self.min_efficiency = min_efficiency
         self.max_efficiency = max_efficiency
         
-        self.dopamine_manager = dopamine_manager
+        self.reward_manager = reward_manager
     
     def connect(self, source, target):
         weight = random.uniform(self.min_efficiency, self.max_efficiency)
@@ -40,11 +40,9 @@ class DopamineSynapseConnector:
         source.add_synapse(syn)
         target.add_spike_listener(syn)
         
-        self.dopamine_manager.add_reward_listener(syn)        
+        self.reward_manager.add_rewardable(syn)      
         
         return syn
-        
-dm = DopamineStdp.DopamineManager(0.0, 10.0, 10.0) # eql / tau / thresh
 
 # FIXME: zero delay introduces order ambiguity
 class CallbackSynapse:
@@ -70,8 +68,8 @@ class Trainer:
     _delaying = 2
     _b_listening = 3
     
-    def __init__(self, dopamine_manager, neur_a, neur_b, delay, window):
-        self.dopamine_manager = dopamine_manager
+    def __init__(self, reward_manager, neur_a, neur_b, delay, window):
+        self.reward_manager = reward_manager
         
         self._state = Trainer._start
         
@@ -166,7 +164,7 @@ class Trainer:
                 
     def exchange(self):
         if self.reward:
-            self.dopamine_manager.add_dopamine(15.0) # immediately add supercritical stimulus
+            self.reward_manager.add_dopamine(0.02)
                 
     def add_listener(self, listener):
         self.listeners.append(listener)
@@ -216,12 +214,14 @@ class SymbolTracker:
                     ofile.write(str(symbol) + " ")
                 ofile.write("\n")
 
+rm = DopamineStdp.RewardManager(equilibrium=0.01, tau=15.0)
+
 n = SpikingNetwork.Network()
 c1 = SpikingNetwork.create_pulsar_cluster(10, 20.0, 1.0, 10.0)
 c2 = SpikingNetwork.create_spiking_cluster(8, 50.0, 20.0, 0.0, 1.0) # count / thres / mag / leak_eql / tau
 n.add_cluster(c1)
 n.add_cluster(c2)
-con = DopamineSynapseConnector(0.001, 0.25, 1.75, dm)
+con = DopamineSynapseConnector(0.001, 0.25, 1.75, rm)
 n.connect_clusters(c1, c2, con)
 
 out_a = SnnBase.SpikingNeuron(60.0, 20.0, 0.0, 0.5) # thresh / mag / eql / tau
@@ -242,7 +242,7 @@ count_b_syn = SnnBase.Synapse(0.0001, 1.0)
 out_b.add_synapse(count_b_syn)
 count_b_syn.add_target(count_b)
 
-t = Trainer(dm, out_a, out_b, delay=2.0, window=2.0)
+t = Trainer(rm, out_a, out_b, delay=1.0, window=1.0)
 s = SymbolTracker(name="symbols")
 t.add_listener(s)
 
@@ -275,7 +275,7 @@ class ProgressNotifier:
                 self.callback(self.time)
 
 entities = n.get_entities()
-entities += [dm, t, s, count_a, count_a_syn, count_b, count_b_syn]
+entities += [rm, t, s, count_a, count_a_syn, count_b, count_b_syn]
 entities.append(ProgressNotifier(5.0))
 SnnBase.run_simulation(2000.0, 1.0 / 1500.0, entities)
 
