@@ -91,7 +91,7 @@ class Trainer:
         self.a_received = False
         self.b_received = False
         
-        self.reward = False
+        self.reward = None
         
         # character listeners, dumb system to separate recording from actual reward management
         self.listeners = list()
@@ -113,6 +113,8 @@ class Trainer:
                 self._state = Trainer._delaying
                 self.remaining_delay = self.delay
                 self.remaining_window = 0.0 # clear any window-timer that's running
+                
+                self.reward = 0.2 # small reward for getting this right
         elif self.state == Trainer._delaying:
             if self.a_received or self.b_received:
                 self._state = Trainer._delaying
@@ -129,10 +131,11 @@ class Trainer:
                 self.remaining_delay = 0.0
                 self.remaining_window = 0.0
             elif self.b_received: # reward and reset
-                self.reward = True
                 self._state = Trainer._start
                 self.remaining_delay = 0.0
                 self.remaining_window = 0.0
+                
+                self.reward = 0.5 # large reward for getting this right
             elif self.window_expired: # reset, but only if we didn't also get b
                 self._state = Trainer._start
                 self.remaining_delay = 0.0
@@ -163,8 +166,10 @@ class Trainer:
                 self.remaining_delay = 0.0
                 
     def exchange(self):
-        if self.reward:
-            self.reward_manager.add_dopamine(0.02)
+        if self.reward is not None:
+            self.reward_manager.add_dopamine(self.reward)
+            
+            self.reward = None
                 
     def add_listener(self, listener):
         self.listeners.append(listener)
@@ -277,7 +282,7 @@ class ProgressNotifier:
 entities = n.get_entities()
 entities += [rm, t, s, count_a, count_a_syn, count_b, count_b_syn]
 entities.append(ProgressNotifier(5.0))
-SnnBase.run_simulation(2000.0, 1.0 / 1500.0, entities)
+SnnBase.run_simulation(20.0, 1.0 / 1500.0, entities)
 
 count_a.report()
 count_b.report()
