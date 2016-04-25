@@ -18,10 +18,12 @@ import random
 op = optparse.OptionParser()
 op.add_option("-f", "--freq", dest="freq",
               help="Set the simulation sample rate",
-              default=1000)
+              default=1000,
+              type="float")
 op.add_option("-t", "--time", dest="time",
               help="set the simulation duration",
-              default=2000)
+              default=2000,
+              type="float")
 (opts, args) = op.parse_args() # uses sys.argv[1:] by default
 freq = opts.freq
 time = opts.time
