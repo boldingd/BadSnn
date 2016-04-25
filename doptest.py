@@ -5,11 +5,26 @@ Created on Tue Mar 29 17:26:09 2016
 @author: boldingd
 """
 
+import sys
+import optparse
+
 import SnnBase
 import SpikingNetwork
 import DopamineStdp
 
 import random
+
+
+op = optparse.OptionParser()
+op.add_option("-f", "--freq", dest="freq",
+              help="Set the simulation sample rate",
+              default=1000)
+op.add_option("-t", "--time", dest="time",
+              help="set the simulation duration",
+              default=2000)
+(opts, args) = op.parse_args() # uses sys.argv[1:] by default
+freq = opts.freq
+time = opts.time
 
 
 # structure:
@@ -282,7 +297,8 @@ class ProgressNotifier:
 entities = n.get_entities()
 entities += [rm, t, s, count_a, count_a_syn, count_b, count_b_syn]
 entities.append(ProgressNotifier(5.0))
-SnnBase.run_simulation(20.0, 1.0 / 1500.0, entities)
+#SnnBase.run_simulation(20.0, 1.0 / 1500.0, entities)
+SnnBase.run_simulation(time, 1.0 / freq, entities)
 
 count_a.report()
 count_b.report()
