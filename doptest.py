@@ -46,19 +46,19 @@ class DopamineSynapseConnector:
         self.delay = delay
         self.min_efficiency = min_efficiency
         self.max_efficiency = max_efficiency
-        
+
         self.reward_manager = reward_manager
-    
+
     def connect(self, source, target):
         weight = random.uniform(self.min_efficiency, self.max_efficiency)
-        
+
         syn = DopamineStdp.DopamineStdpSynapse(self.delay, weight, self.min_efficiency, self.max_efficiency) # delay / efficiency / min / max
         syn.add_target(target)
         source.add_synapse(syn)
         target.add_spike_listener(syn)
-        
-        self.reward_manager.add_rewardable(syn)      
-        
+
+        self.reward_manager.add_rewardable(syn)
+
         return syn
 
 # FIXME: zero delay introduces order ambiguity
@@ -67,62 +67,62 @@ class CallbackSynapse:
         self.callback = callback
         self.received_spike = False
         self.args = args
-        
+
     def add_spike(self, magnitude):
         self.received_spike = True
-        
+
     def step(self, delta):
         if self.received_spike:
             if self.args is not None:
                 self.callback(self.args)
             else:
                 self.callback()
-                
+
             self.received_spike = False
 
 class Trainer:
     _start = 1
     _delaying = 2
     _b_listening = 3
-    
+
     def __init__(self, reward_manager, neur_a, neur_b, delay, window):
         self.reward_manager = reward_manager
-        
+
         self._state = Trainer._start
-        
+
         # hold ca and cb to step them?
         self.ca = CallbackSynapse(lambda: self._notify_a()) # these should be ~closures?
         neur_a.add_synapse(self.ca)
-        
+
         self.cb = CallbackSynapse(lambda: self._notify_b())
         neur_b.add_synapse(self.cb)
-        
+
         self.delay = delay
         self.remaining_delay = 0.0
         self.window = window
         self.remaining_window = 0.0
-        
+
         self.delay_expired = False
         self.window_expired = False
-        
+
         self.a_received = False
         self.b_received = False
-        
+
         self.reward = None
-        
+
         # character listeners, dumb system to separate recording from actual reward management
         self.listeners = list()
-        
+
     def _notify_a(self):
         self.a_received = True
-            
+
         self._notify("a")
-            
+
     def _notify_b(self):
         self.b_received = True
-            
+
         self._notify("b")
-        
+
     def prepare(self):
         # put the state transition in here
         if self._state == Trainer._start:
@@ -130,9 +130,9 @@ class Trainer:
                 self._state = Trainer._delaying
                 self.remaining_delay = self.delay
                 self.remaining_window = 0.0 # clear any window-timer that's running
-                
-                self.reward = 0.2 # small reward for getting this right
-        elif self.state == Trainer._delaying:
+
+                self.reward = 0.3 # small reward for getting this right
+        elif self._state == Trainer._delaying:
             if self.a_received or self.b_received:
                 self._state = Trainer._delaying
                 # clear any running timers
@@ -142,7 +142,7 @@ class Trainer:
                 self._state = Trainer._b_listening
                 self.remaining_delay = 0.0 # we already know this if delay_expired is true, but being consistent
                 self.remaining_window = self.window
-        elif self.state == Trainer._b_listening:
+        elif self._state == Trainer._b_listening:
             if self.a_received: # reset
                 self._state = Trainer._start
                 self.remaining_delay = 0.0
@@ -151,77 +151,77 @@ class Trainer:
                 self._state = Trainer._start
                 self.remaining_delay = 0.0
                 self.remaining_window = 0.0
-                
+
                 self.reward = 0.5 # large reward for getting this right
             elif self.window_expired: # reset, but only if we didn't also get b
                 self._state = Trainer._start
                 self.remaining_delay = 0.0
                 self.remaining_window = 0.0
-        
+
         # clear flags
         self.delay_expired = False
         self.window_expired = False
         self.a_received = False
         self.b_received = False
-        
+
     def step(self, dt):
         self.ca.step(dt)
         self.cb.step(dt)
-        
+
         if self.remaining_window > 0.0:
             self.remaining_window -= dt
-            
+
             if self.remaining_window <= 0.0:
                 self.window_expired = True
                 self.remaining_window = 0.0
-                
+
         if self.remaining_delay > 0.0:
             self.remaining_delay -= dt
-            
+
             if self.remaining_delay <= 0.0:
                 self.delay_expired = True
                 self.remaining_delay = 0.0
-                
+
     def exchange(self):
         if self.reward is not None:
             self.reward_manager.add_dopamine(self.reward)
-            
+
             self.reward = None
-                
+
     def add_listener(self, listener):
         self.listeners.append(listener)
-        
+
     def _notify(self, symbol):
         for listener in self.listeners:
             listener.notify(symbol)
-            
+
 class SymbolTracker:
     def __init__(self, name=None):
         self.symbols = list()
-        
+
         self.state = []
         self.history = []
-        
+
         self.time = 0.0
-        
+
         self.name = name
-        
+
     def notify(self, symbol):
         self.state.append(symbol)
-        
+
     def prepare(self):
         if len(self.state) > 0:
             history_entry = [self.time]
             history_entry += self.state
             self.history.append(history_entry)
             self.state = []
-        
+
     def step(self, dt):
         self.time += dt
-    
+
     def exchange(self):
         pass
-    
+
     def report(self, fname=None):
         out_path = fname
         if out_path is None:
@@ -229,7 +229,7 @@ class SymbolTracker:
                     out_path = self.name + ".dat"
                 else:
                     raise SnnBase.SnnError("Could not pick unique file name")
-                
+
         with open(out_path, "w") as ofile:
             for item in self.history:
                 for symbol in item:
@@ -273,24 +273,24 @@ class ProgressNotifier:
         self.gap = 1.0 / frequency
         self.remaining_gap = self.gap
         self.callback = callback
-        
+
         self.notify = False
-        
+
         self.time = 0.0
-        
+
     def step(self, dt):
         self.time += dt
-        
+
         self.remaining_gap -= dt
-        
+
         if self.remaining_gap <= 0.0:
             self.remaining_gap = self.gap
             self.notify = True
-            
+
     def exchange(self):
         if self.notify:
             self.notify = False
-            
+
             if self.callback is None:
                 print("notify: ", self.time)
             else:
