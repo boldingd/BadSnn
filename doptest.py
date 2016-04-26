@@ -130,14 +130,14 @@ class Trainer:
                 self._state = Trainer._delaying
                 self.remaining_delay = self.delay
                 self.remaining_window = 0.0 # clear any window-timer that's running
-                self.reward = 0.5 # small reward for getting this right
+                self.reward = 1.0 # small reward for getting this right
         elif self._state == Trainer._delaying:
             if self.a_received or self.b_received:
                 self._state = Trainer._delaying
                 # clear any running timers
                 self.remaining_delay = 0.0
                 self.remaining_window = 0.0
-                self.reward = -0.5
+                self.reward = -1.0
             elif self.delay_expired:
                 self._state = Trainer._b_listening
                 self.remaining_delay = 0.0 # we already know this if delay_expired is true, but being consistent
@@ -147,17 +147,17 @@ class Trainer:
                 self._state = Trainer._start
                 self.remaining_delay = 0.0
                 self.remaining_window = 0.0
-                self.reward = -0.5
+                self.reward = -1.0
             elif self.b_received: # reward and reset
                 self._state = Trainer._start
                 self.remaining_delay = 0.0
                 self.remaining_window = 0.0
-                self.reward = 0.5 # large reward for getting this right
+                self.reward = 1.0 # large reward for getting this right
             elif self.window_expired: # reset, but only if we didn't also get b
                 self._state = Trainer._start
                 self.remaining_delay = 0.0
                 self.remaining_window = 0.0
-                self.reward = -0.5
+                self.reward = -1.0
 
         # clear flags
         self.delay_expired = False
