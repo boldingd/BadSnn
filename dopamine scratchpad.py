@@ -34,7 +34,8 @@ class SpikeRewarder:
             self.dopamine_manager.add_dopamine(incr)
 
 
-pulsar_5hz = SnnBase.get_pulsar_for_frequency(power=80.0, frequency=5.0)
+#pulsar_5hz = SnnBase.get_pulsar_for_frequency(power=80.0, frequency=5.0)
+pulsar_5hz = SnnBase.Pulsar(magnitude=80.0, frequency=5.0)
 
 spiker = SnnBase.SpikingNeuron(threshold=50.0, magnitude=30.0, leak_eql=0.0, leak_tau=0.75)
 

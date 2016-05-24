@@ -261,55 +261,6 @@ class Pulsar:
     def add_spike_listener(self, listener):
         self.spike_listeners.append(listener)
 
-#class Pulsar:
-#    def __init__(self, magnitude, delay):
-#        self.magnitude = magnitude
-#        self.delay = delay
-#        self.remaining = delay
-#
-#        self.synapses = []
-#        
-#        self.spike_listeners = []
-#        
-#        self._spike = False
-#        
-#    def step(self, dt):
-#        self.remaining -= dt
-#
-#        if self.remaining <= 0.0:
-#            self.remaining = self.delay
-#            self._spike = True
-#            
-#    def exchange(self):
-#        if self._spike == True:
-#            for s in self.synapses:
-#                s.add_spike(self.magnitude)
-#                
-#            for listener in self.spike_listeners:
-#                listener.notify_of_spike()
-#                
-#            self._spike = False
-#        
-#    def add_synapse(self, ps):
-#        self.synapses.append(ps)
-#        
-#    def add_spike_listener(self, listener):
-#        self.spike_listeners.append(listener)
-#        
-#def get_pulsar_for_frequency(power, frequency):
-#    """Construct a pulsar with a given power and frequency.
-#    Useful because the most common use-case is an array of pulsars of constant power at varying freuqencies.
-#    power is given in units-per-whole-tick (units-per-second)
-#    frequency is given in pulses-per-whole-tick (hertz)
-#    this,
-#    magnitude = power / frequency
-#    delay = 1.0 / frequency
-#    """
-#    magnitude = power / frequency
-#    delay = 1.0 / frequency
-#    
-#    return Pulsar(magnitude, delay)
-        
 class NaiveRandomSpiker:
     def __init__(self, magnitude, freq):
         self.magnitude = magnitude
@@ -575,19 +526,19 @@ def run_simulation(stop_time, step, entities):
             
         time += step
 
-class _SimulationManagerIterator:
-    def __init__(self, manager):
-        self.manager = manager
-        
-    def __next__(self):
-        pass # todo - got lazy
-        
-class SimulationmManager:
-    def __init__(self):
-        self.independant_entities = list()
-        self.entity_sources = list()
-        
-    def __iter__(self):
-        return _SimulationManagerIterator(self)
+#class _SimulationManagerIterator:
+#    def __init__(self, manager):
+#        self.manager = manager
+#        
+#    def __next__(self):
+#        pass # todo - got lazy
+#        
+#class SimulationmManager:
+#    def __init__(self):
+#        self.independant_entities = list()
+#        self.entity_sources = list()
+#        
+#    def __iter__(self):
+#        return _SimulationManagerIterator(self)
         
     
