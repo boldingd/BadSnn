@@ -300,8 +300,11 @@ class ProgressNotifier:
 entities = n.get_entities()
 entities += [rm, t, s, count_a, count_a_syn, count_b, count_b_syn]
 entities.append(ProgressNotifier(5.0))
-#SnnBase.run_simulation(20.0, 1.0 / 1500.0, entities)
-SnnBase.run_simulation(time, 1.0 / freq, entities)
+
+try:
+    SnnBase.run_simulation(time, 1.0 / freq, entities)
+except KeyboardInterrupt:
+    print("Run aborted, still writing records.  ^C again to quit.")
 
 count_a.report()
 count_b.report()

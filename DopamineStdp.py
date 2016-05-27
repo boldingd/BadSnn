@@ -103,7 +103,19 @@ class DopamineStdpSynapse:
                 t.add_spike(self.efficiency * s.magnitude)
                 
     def reward(self, r):
-        self.r += r # accumulate reward signals        
+        self.r += r # accumulate reward signals
+        
+    @staticmethod
+    def connect(source, target, delay, efficiency, min_efficiency, max_efficiency, reward_manager=None):
+        s = DopamineStdpSynapse(delay, efficiency, min_efficiency, max_efficiency)
+        
+        s.add_target(target)
+        source.add_synapse(s)
+        
+        if reward_manager is not None:
+            reward_manager.add_rewardable(s)
+        
+        return s
 
 # assumption: add_reward will be called only during exchange step
 class RewardManager:

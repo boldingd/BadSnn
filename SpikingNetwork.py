@@ -27,8 +27,8 @@ def create_pulsar_cluster(count, total_power, freq_min, freq_max):
     per_pulsar_power = total_power / count
     
     for freq in freqs:
-        delay = 1.0 / freq
-        p = SnnBase.Pulsar(per_pulsar_power, delay)
+        per_pulse_power = per_pulsar_power / freq # # forgot to split power up over pulses
+        p = SnnBase.Pulsar(per_pulse_power, freq)
         c.add_neuron(p)
         
     return c
@@ -41,6 +41,23 @@ def create_spiking_cluster(count, threshold, magnitude, leak_eql, leak_tau):
         c.add_neuron(sn)
         
     return c
+    
+def create_poisson_cluster(count, total_power, freq_min, freq_max):
+    if count < 1:
+        raise ValueError("Pulsar count must be positive")
+        
+    freqs = SnnBase.linspace(freq_min, freq_max, count)
+    
+    c = Cluster()
+    
+    per_spiker_power = total_power / count # divide total power of spikers
+    
+    for freq in freqs:
+        per_spike_power = per_spiker_power / freq # divide spiker power over pulses
+        p = SnnBase.PoissonSpiker(per_spike_power, freq)
+        c.add_neuron(p)
+        
+    return c
 
 class BasicSynapseConnector:
     def __init__(self, delay, minimum_weight, maximum_weight):
@@ -51,9 +68,7 @@ class BasicSynapseConnector:
     def connect(self, source, target):
         e = random.uniform(self.minimum_weight, self.maximum_weight)
             
-        syn = SnnBase.Synapse(self.delay, e)
-        source.add_synapse(syn)
-        syn.add_target(target)
+        syn = SnnBase.Synapse.Connect(source, target, self.delay, e, self.min_efficiency, self.max_efficiency)
         
         return syn
 
@@ -65,10 +80,8 @@ class StdpSynapseConnector:
     
     def connect(self, source, target):
         e = random.uniform(self.min_efficiency, self.max_efficiency)
-            
-        syn = SnnBase.StdpSynapse(self.delay, e, self.min_efficiency, self.max_efficiency)
-        source.add_synapse(syn)
-        syn.add_target(target)
+        
+        syn = SnnBase.StdpSynapse.Connect(source, target, self.delay, e, self.min_efficiency, self.max_efficiency)
         
         return syn
             

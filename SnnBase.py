@@ -116,6 +116,15 @@ class Synapse:
     def add_target(self, target):
         self.targets.append(target)
         
+    @staticmethod
+    def connect(source, target, delay=0.0, efficiency=1.0):
+        s = Synapse(delay, efficiency)
+        s.add_target(target)
+        source.add_synapse(s)
+        
+        return s
+        
+        
 class StdpFunction:
     def __init__(self, tau_p, A_p, tau_n = None, A_n = None):
         self.tau_p = tau_p
@@ -224,6 +233,15 @@ class StdpSynapse:
         for s in self.outgoing_spikes:
             for t in self.targets:
                 t.add_spike(self.efficiency * s.magnitude)
+                
+    @staticmethod
+    def connect(source, target, delay, efficiency, min_efficiency, max_efficiency):
+        s = StdpSynapse(delay, efficiency, min_efficiency, max_efficiency)
+        
+        s.add_target(target)
+        source.add_synapse(s)
+        
+        return s
 
 class Pulsar:
     def __init__(self, magnitude, frequency):
