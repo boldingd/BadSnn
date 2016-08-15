@@ -93,6 +93,9 @@ class RewardBox:
 
         self._high_state = False
 
+        self.callbacks = []
+        self.run_callbacks = False
+
     # assume we'll get spikes during exchange
     # prepare: arrived -> waiting, waiting -= time
     #   can I just cram arrived spikes in at full time?  I think so
@@ -110,28 +113,48 @@ class RewardBox:
         if self._high_state:
             if len(self.remaining_times) <= self.low_threshold:
                 self._high_state = False
+                self.run_callbacks = True
         else:
             if len(self.remaining_times) >= self.high_threshold:
                 self._high_state = True
+                self.run_callbacks = True
 
-        print(self._high_state)
+        #print(self._high_state)
 
-#    def exchange(self):
-#        pass
+    def exchange(self):
+        if self.run_callbacks:
+            self.run_callbacks = False
+            for callback in self.callbacks:
+                callback(self._high_state)
 
     def add_spike(self, magnitude):
         self.remaining_times.append(self.window)
 
+    def add_change_callback(self, callback):
+        self.callbacks.append(callback)
+
+class SymbolTracker:
+    pass
+
+class Clock:
+    def __init__(self):
+        self.t = 0.0
+
+    def step(self, dt):
+        self.t += dt
+
+clock = Clock()
 
 driver = SinusoidalDrivingFunction(0.5)
 pspiker = DrivenPoissonSpiker(magnitude=1.0, frequency=5.0, driving_function=driver)
-rbox = RewardBox(high_threshold=3, low_threshold=7, window=0.5)
+rbox = RewardBox(high_threshold=7, low_threshold=3, window=0.5)
+rbox.add_change_callback(lambda new_value: print("{}: became {}".format(clock.t, new_value)))
 
 logger = StateLogger("rbox", rbox)
 
 syn = SnnBase.Synapse.connect(pspiker, rbox)
 
-entities = [driver, pspiker, rbox, syn]
+entities = [clock, driver, pspiker, rbox, syn]
 SnnBase.run_simulation(10.0, 1 / 1000, entities)
 
 logger.write_log()
