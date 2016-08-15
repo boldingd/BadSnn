@@ -541,6 +541,7 @@ def run_simulation(stop_time, step, entities):
                 entity.exchange()
             except AttributeError:
                 pass
+            # TODO: this fails if exchange raises an attribute error!
             
         time += step
 
