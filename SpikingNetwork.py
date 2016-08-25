@@ -61,15 +61,15 @@ def create_poisson_cluster(count, total_power, freq_min, freq_max):
     return c
 
 class BasicSynapseConnector:
-    def __init__(self, delay, minimum_weight, maximum_weight):
+    def __init__(self, delay, min_efficiency, max_efficiency):
         self.delay = delay
-        self.minimum_weight = minimum_weight
-        self.maximum_weight = maximum_weight
+        self.min_efficiency = min_efficiency
+        self.max_efficiency = max_efficiency
     
     def connect(self, source, target):
-        e = random.uniform(self.minimum_weight, self.maximum_weight)
+        e = random.uniform(self.min_efficiency, self.max_efficiency)
             
-        syn = SnnBase.Synapse.Connect(source, target, self.delay, e, self.min_efficiency, self.max_efficiency)
+        syn = SnnBase.Synapse.connect(source=source, target=target, delay=self.delay, efficiency=e)
         
         return syn
 
@@ -82,7 +82,7 @@ class StdpSynapseConnector:
     def connect(self, source, target):
         e = random.uniform(self.min_efficiency, self.max_efficiency)
         
-        syn = Stdp.StdpSynapse.Connect(source, target, self.delay, e, self.min_efficiency, self.max_efficiency)
+        syn = Stdp.StdpSynapse.connect(source=source, target=target, delay=self.delay, efficiency=e, min_efficiency=self.min_efficiency, max_efficiency=self.max_efficiency)
         
         return syn
             
