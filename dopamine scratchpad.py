@@ -13,8 +13,8 @@ import DopamineStdp
 class SpikeRewarder:
     """ticks up the dopamine manager every time a spike is received"""
     
-    def __init__(self, dopamine_manager, per_spike_multiplier):
-        self.dopamine_manager = dopamine_manager
+    def __init__(self, reward_manager, per_spike_multiplier):
+        self.reward_manager = reward_manager
         
         self.waiting_spikes = list()
         self.outgoing_spikes = list()
@@ -31,7 +31,7 @@ class SpikeRewarder:
     def exchange(self):
         for spike in self.outgoing_spikes:
             incr = spike * self.per_spike_multiplier
-            self.dopamine_manager.add_dopamine(incr)
+            self.reward_manager.add_reward(incr)
 
 
 #pulsar_5hz = SnnBase.get_pulsar_for_frequency(power=80.0, frequency=5.0)
@@ -47,19 +47,19 @@ pulsar_5hz.add_synapse(dsyn_pulsar_spiker)
 dsyn_pulsar_spiker.add_target(spiker)
 spiker.add_spike_listener(dsyn_pulsar_spiker)
 
-dmanager = DopamineStdp.DopamineManager(equilibrium=0.1, tau=10.0, threshold=30.0)
-dmanager.add_reward_listener(dsyn_pulsar_spiker)
+rmanager = DopamineStdp.RewardManager(equilibrium=0.1, tau=10.0)
+rmanager.add_rewardable(dsyn_pulsar_spiker)
 
-rewarder = SpikeRewarder(dmanager, 0.1)
+rewarder = SpikeRewarder(rmanager, 0.1)
 syn_spiker_rewarder = SnnBase.Synapse(delay=0.0, efficiency=1.0) # 0-delay should ~work now
 spiker.add_synapse(syn_spiker_rewarder)
 syn_spiker_rewarder.add_target(rewarder)
 
 syn_sampler = SnnBase.Sampler(source=dsyn_pulsar_spiker, interval= 1.0/50.0, name="synapse efficiency")
 
-dop_sampler = SnnBase.Sampler(source=dmanager, interval=1.0/50.0, name="dopamine level")
+dop_sampler = SnnBase.Sampler(source=rmanager, interval=1.0/50.0, name="dopamine level")
 
-entities = [pulsar_5hz, spiker, counter, dsyn_pulsar_spiker, dmanager, rewarder, syn_spiker_rewarder, syn_sampler, dop_sampler]
+entities = [pulsar_5hz, spiker, counter, dsyn_pulsar_spiker, rmanager, rewarder, syn_spiker_rewarder, syn_sampler, dop_sampler]
 SnnBase.run_simulation(200.0, 1.0 / 2000.0, entities)
 
 counter.report()
