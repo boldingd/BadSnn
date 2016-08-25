@@ -6,6 +6,7 @@ Created on Tue Apr  5 20:54:35 2016
 """
 
 import SnnBase
+import Stdp
 
 pulsar = SnnBase.Pulsar(30.0, 3.0) # 15 mag, 3Hz
 
@@ -16,7 +17,7 @@ n1 = SnnBase.SpikingNeuron(60.0, 50.0, 0.0, 2.0) # thresh / mag / eql / tau
 cr = SnnBase.Counter("n1 counter")
 n1.add_spike_listener(cr)
 
-syn_pulsar_n1 = SnnBase.StdpSynapse(0.001, 1.0, 0.4, 1.6) # delay / efficiency / min / max
+syn_pulsar_n1 = Stdp.StdpSynapse(0.001, 1.0, 0.4, 1.6) # delay / efficiency / min / max
 pulsar.add_synapse(syn_pulsar_n1)
 syn_pulsar_n1.add_target(n1)
 n1.add_spike_listener(syn_pulsar_n1)
@@ -34,7 +35,7 @@ print("running")
 try:
     SnnBase.run_simulation(20.0, 1.0 / 2000.0, entities)
 except Exception as e:
-    print("Blammo:\n\t" + e)
+    print("Blammo:\n\t" + str(e))
 
 cr.report()
 sr.report()

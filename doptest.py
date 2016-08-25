@@ -185,7 +185,7 @@ class Trainer:
 
     def exchange(self):
         if self.reward is not None:
-            self.reward_manager.add_dopamine(self.reward)
+            self.reward_manager.add_reward(self.reward)
 
             self.reward = None
 
@@ -238,13 +238,16 @@ class SymbolTracker:
                 ofile.write("\n")
 
 rm = DopamineStdp.RewardManager(equilibrium=0.01, tau=15.0)
+rm.r = 2.0 # DEBUG
+
+rsampler = SnnBase.Sampler(rm, 1.0 / 100.0, "reward")
 
 n = SpikingNetwork.Network()
-c1 = SpikingNetwork.create_pulsar_cluster(10, 20.0, 1.0, 10.0)
-c2 = SpikingNetwork.create_spiking_cluster(8, 50.0, 20.0, 0.0, 1.0) # count / thres / mag / leak_eql / tau
+c1 = SpikingNetwork.create_pulsar_cluster(count=10, total_power=90.0, freq_min=1.0, freq_max=10.0)
+c2 = SpikingNetwork.create_spiking_cluster(count=8, threshold=50.0, magnitude=20.0, leak_eql=0.0, leak_tau=1.0) # count / thres / mag / leak_eql / tau
 n.add_cluster(c1)
 n.add_cluster(c2)
-con = DopamineSynapseConnector(0.001, 0.25, 1.75, rm)
+con = DopamineSynapseConnector(delay=0.001, min_efficiency=0.25, max_efficiency=1.75, reward_manager=rm)
 n.connect_clusters(c1, c2, con)
 
 out_a = SnnBase.SpikingNeuron(60.0, 20.0, 0.0, 0.5) # thresh / mag / eql / tau
@@ -298,7 +301,7 @@ class ProgressNotifier:
                 self.callback(self.time)
 
 entities = n.get_entities()
-entities += [rm, t, s, count_a, count_a_syn, count_b, count_b_syn]
+entities += [rm, rsampler, t, s, count_a, count_a_syn, count_b, count_b_syn]
 entities.append(ProgressNotifier(5.0))
 
 try:
@@ -311,3 +314,4 @@ count_b.report()
 
 s.report()
 
+rsampler.report()

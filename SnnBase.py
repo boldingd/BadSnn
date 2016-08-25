@@ -124,125 +124,6 @@ class Synapse:
         
         return s
         
-        
-class StdpFunction:
-    def __init__(self, tau_p, A_p, tau_n = None, A_n = None):
-        self.tau_p = tau_p
-        self.A_p = A_p
-        
-        if tau_n is None:
-            self.tau_n = tau_p
-        else:
-            self.tau_n = tau_n
-            
-        if A_n is None:
-            self.A_n = A_p
-        else:
-            self.A_n = A_n
-            
-    def __call__(self, gap): # post- pre => positive should strengthen
-        if gap > 0.0:
-            return self.A_p * math.exp(-1.0 * gap / self.tau_p)
-        else:
-            return -1.0 * self.A_n * math.exp(gap / self.tau_n)
-
-# TODO: finish updating this to work with Step/Exchange design
-#       add_spike and notify_of_spike should only occur during exchange step
-#       so they'll mark the total change and apply during compute
-class StdpSynapse:
-    def __init__(self, delay, efficiency, min_efficiency, max_efficiency):
-        self.delay = delay
-        self.min_efficiency = min_efficiency
-        self.max_efficiency = max_efficiency
-        
-        self.efficiency = efficiency
-        
-        self.M = 0.0
-        self.A_m = 0.015
-        self.tau_m = 0.0025
-        
-        self.P = 0.0
-        self.A_p = 0.015
-        self.tau_p = 0.0025
-        
-        self.waiting_spikes = []
-        self.outgoing_spikes = []
-        
-        self.targets = []
-        
-        self.efficiency_update = 0.0        
-        
-    def add_spike(self, magnitude):
-        # every time we receive a spike, add A+ to P
-        self.P += self.A_p
-
-        # then (?) schedule a decrement by M*g_max (M should be negative or 0)        
-        self.efficiency_update += self.M * self.max_efficiency
-            
-        ds = DelayedSpike(self.delay, magnitude)
-        
-        self.waiting_spikes.append(ds)
-    
-    def add_target(self, target):
-        self.targets.append(target)
-        
-    def get_sample(self):
-        return self.efficiency
-        
-    def notify_of_spike(self):
-        # every time the post-synaptic fires, subtract A- from M
-        self.M -= self.A_m
-        
-        self.efficiency_update += self.P * self.max_efficiency
-        
-    def prepare(self):
-        # apply efficiency change from last cycle before step / exchange
-        if self.efficiency_update != 0.0:
-            self.efficiency += self.efficiency_update
-            
-            # clip to allowed range
-            if self.efficiency > self.max_efficiency:
-                self.efficiency = self.max_efficiency
-            elif self.efficiency < self.min_efficiency:
-                self.efficiency = self.min_efficiency
-                
-            self.efficiency_update = 0.0
-            
-    def step(self, dt):
-        # M and P exponentially decay to 0
-        delta_M = -1.0 * self.M * (dt / self.tau_m)
-        self.M += delta_M
-        
-        delta_P = -1.0 * self.P * (dt / self.tau_p)
-        self.P += delta_P
-        
-        # spike, as basic delayed neuron
-        temp_spikes = self.waiting_spikes
-        self.waiting_spikes = []
-        self.outgoing_spikes = []
-
-        for spike in temp_spikes:
-            spike.remaining_delay -= dt
-            
-            if spike.remaining_delay <= 0.0:
-                self.outgoing_spikes.append(spike)
-            else:
-                self.waiting_spikes.append(spike)
-                
-    def exchange(self):
-        for s in self.outgoing_spikes:
-            for t in self.targets:
-                t.add_spike(self.efficiency * s.magnitude)
-                
-    @staticmethod
-    def connect(source, target, delay, efficiency, min_efficiency, max_efficiency):
-        s = StdpSynapse(delay, efficiency, min_efficiency, max_efficiency)
-        
-        s.add_target(target)
-        source.add_synapse(s)
-        
-        return s
-
 class Pulsar:
     def __init__(self, magnitude, frequency):
         self.magnitude = magnitude
@@ -331,6 +212,48 @@ class PoissonSpiker:
     def step(self, dt):
         u = random.uniform(0.0, 1.0)
         if u <= dt * self.frequency:
+            self._spike = True
+            
+    def exchange(self):
+        if self._spike:
+            for synapse in self.synapses:
+                synapse.add_spike(self.magnitude)
+                
+            for listener in self.spike_listeners:
+                listener.notify_of_spike()
+                
+            self._spike = False
+            
+    def add_synapse(self, syn):
+        self.synapses.append(syn)
+        
+    def add_spike_listener(self, listener):
+        self.spike_listeners.append(listener)
+
+class DrivenPoissonSpiker:
+    # driving function should be an object with a __call__ method
+    # __call__ should have no parameters (it won't be given any)
+    # if it needs to be stepped, it should be stepped seperately
+    # TODO: evaluate how good an idea this really is
+    def __init__(self, magnitude, alpha, threshold, driving_function):
+        self.magnitude = magnitude
+        self.alpha = alpha
+        self.threshold = threshold
+
+        self.driving_function = driving_function
+        
+        self.synapses = []
+        
+        self.spike_listeners = []
+        
+        self._spike = False
+        
+    def step(self, dt):
+        u = random.uniform(0.0, 1.0)
+
+        r = self.alpha * (self.driving_function() - self.threshold) # effective freq is function of driving function
+
+        if u <= dt * r:
             self._spike = True
             
     def exchange(self):
@@ -454,46 +377,47 @@ class Sampler:
         with open(out_path, "w") as ofile:
             self.write_samples(ofile)
 
-class SinusoidSource:
-    def __init__(self, frequency, amplitude):
-        self.frequency = frequency
-        self.freq_mult = 2.0 * 3.14159 * frequency
-        self.amplitude = amplitude
-
-        self.time = 0.0
-
-    def step(self, dt):
-        self.time += dt
-
-    def get_current(self):
-        return self.amplitude * math.sin(self.freq_mult * self.time)
-
-    def get_sample(self):
-        return self.get_current()
-
-class SumOfSines:
-    def __init__(self):
-        self.sinusoids = []
-
-    def step(self, dt):
-        for sine in self.sinusoids:
-            sine.step(dt)
-
-    def get_current(self):
-        sum = 0.0
-
-        for sine in self.sinusoids:
-            sum += sine.get_current()
-
-        return sum
-
-    def get_sample(self):
-        return self.get_current()
-
-    def add_sinusoid(self, frequency, amplitude):
-        s = SinusoidSource(frequency, amplitude)
-        
-        self.sinusoids.append(s)
+## Easy enough to implement if useful
+#class SinusoidSource:
+#    def __init__(self, frequency, amplitude):
+#        self.frequency = frequency
+#        self.freq_mult = 2.0 * 3.14159 * frequency
+#        self.amplitude = amplitude
+#
+#        self.time = 0.0
+#
+#    def step(self, dt):
+#        self.time += dt
+#
+#    def get_current(self):
+#        return self.amplitude * math.sin(self.freq_mult * self.time)
+#
+#    def get_sample(self):
+#        return self.get_current()
+#
+#class SumOfSines:
+#    def __init__(self):
+#        self.sinusoids = []
+#
+#    def step(self, dt):
+#        for sine in self.sinusoids:
+#            sine.step(dt)
+#
+#    def get_current(self):
+#        sum = 0.0
+#
+#        for sine in self.sinusoids:
+#            sum += sine.get_current()
+#
+#        return sum
+#
+#    def get_sample(self):
+#        return self.get_current()
+#
+#    def add_sinusoid(self, frequency, amplitude):
+#        s = SinusoidSource(frequency, amplitude)
+#        
+#        self.sinusoids.append(s)
 
 class Delayer:
     def __init__(self, entity, delay):
@@ -505,6 +429,34 @@ class Delayer:
             self.delay -= dt
         else:
             self.entity.step(dt)
+
+class CallbackManager:
+    def __init__(self, freq):
+        self.t = 0.0
+        self.freq = freq
+        self.wait = 1.0 / freq
+
+        self.run_callbacks = False
+        self.callbacks = []
+
+    def step(self, dt):
+        self.t += dt
+        self.wait -= dt
+
+        if self.wait <= 0.0:
+            self.wait = 1.0 / self.freq
+            self.run_callbacks = True
+
+    def exchange(self):
+        if self.run_callbacks:
+            self.run_callbacks = False
+
+            for callback in self.callbacks:
+                callback(self.t)
+
+    def add_callback(self, callback):
+        self.callbacks.append(callback)
+
             
 def linspace(minimum, maximum, count):
     """a lazy reimplementation of linspace
@@ -529,19 +481,28 @@ def run_simulation(stop_time, step, entities):
         for entity in entities:
             
             # call entity.compute() if it exists
-            try:
+#            try:
+#                entity.prepare()
+#            except AttributeError:
+#                pass
+#
+
+            if hasattr(entity, "prepare") and callable(entity.prepare):
                 entity.prepare()
-            except AttributeError:
-                pass
             
             entity.step(step)
             
             # call entity.exchange() if it exists
-            try:
+#            try:
+#                entity.exchange()
+#            except AttributeError:
+#                pass
+
+            if hasattr(entity, "exchange") and callable(entity.exchange):
                 entity.exchange()
-            except AttributeError:
-                pass
+
             # TODO: this fails if exchange raises an attribute error!
+            # and it did so, one too many times
             
         time += step
 

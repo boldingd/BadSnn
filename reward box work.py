@@ -26,10 +26,48 @@ class SinusoidalDrivingFunction:
         return self()
         
 
+#class DrivenPoissonSpiker:
+#    def __init__(self, magnitude, frequency, driving_function):
+#        self.magnitude = magnitude
+#        self.frequency = frequency
+#
+#        self.driving_function = driving_function
+#        
+#        self.synapses = []
+#        
+#        self.spike_listeners = []
+#        
+#        self._spike = False
+#        
+#    def step(self, dt):
+#        u = random.uniform(0.0, 1.0)
+#        #u += self.driving_function()
+#        u -= self.driving_function() # TODO: express more elegantly
+#        if u <= dt * self.frequency:
+#            self._spike = True
+#            
+#    def exchange(self):
+#        if self._spike:
+#            for synapse in self.synapses:
+#                synapse.add_spike(self.magnitude)
+#                
+#            for listener in self.spike_listeners:
+#                listener.notify_of_spike()
+#                
+#            self._spike = False
+#            
+#    def add_synapse(self, syn):
+#        self.synapses.append(syn)
+#        
+#    def add_spike_listener(self, listener):
+#        self.spike_listeners.append(listener)
+
+
 class DrivenPoissonSpiker:
-    def __init__(self, magnitude, frequency, driving_function):
+    def __init__(self, magnitude, alpha, threshold, driving_function):
         self.magnitude = magnitude
-        self.frequency = frequency
+        self.alpha = alpha
+        self.threshold = threshold
 
         self.driving_function = driving_function
         
@@ -41,9 +79,10 @@ class DrivenPoissonSpiker:
         
     def step(self, dt):
         u = random.uniform(0.0, 1.0)
-        #u += self.driving_function()
-        u -= self.driving_function() # TODO: express more elegantly
-        if u <= dt * self.frequency:
+
+        r = self.alpha * (self.driving_function() - self.threshold) # effective freq is function of driving function
+
+        if u <= dt * r:
             self._spike = True
             
     def exchange(self):
@@ -61,6 +100,7 @@ class DrivenPoissonSpiker:
         
     def add_spike_listener(self, listener):
         self.spike_listeners.append(listener)
+
 
 class StateLogger:
     def __init__(self, name, box):
@@ -173,9 +213,13 @@ class Clock:
 
 clock = Clock()
 
-driver = SinusoidalDrivingFunction(0.5)
-pspiker = DrivenPoissonSpiker(magnitude=1.0, frequency=5.0, driving_function=driver)
-rbox = RewardBox(high_threshold=7, low_threshold=3, window=0.5)
+#driver = SinusoidalDrivingFunction(0.5)
+#pspiker = DrivenPoissonSpiker(magnitude=1.0, frequency=5.0, driving_function=driver)
+
+driver = SinusoidalDrivingFunction(frequency=0.5, bias=0.6, magnitude=0.4, phase=0.0)
+pspiker = DrivenPoissonSpiker(magnitude=1.0, alpha=15.0, threshold=0.0, driving_function=driver)
+
+rbox = RewardBox(high_threshold=6, low_threshold=4, window=0.4)
 #rbox.add_change_callback(lambda new_value: print("{}: became {}".format(clock.t, new_value)))
 
 logger = StateLogger("rbox", rbox)
@@ -199,7 +243,7 @@ calls.add_callback(get_record)
 
 
 entities = [clock, driver, pspiker, rbox, syn, logger, calls]
-SnnBase.run_simulation(10.0, 1 / 1000, entities)
+SnnBase.run_simulation(10.0, 1 / 2000, entities)
 
 logger.write_log()
 
