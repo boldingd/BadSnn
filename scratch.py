@@ -22,7 +22,7 @@ pulsar.add_synapse(syn_pulsar_n1)
 syn_pulsar_n1.add_target(n1)
 n1.add_spike_listener(syn_pulsar_n1)
 
-sr = SnnBase.Sampler(syn_pulsar_n1, 1.0 / 40.0, "syn")
+sr = SnnBase.Sampler(syn_pulsar_n1, frequency = 40.0, name = "syn")
 
 syn_rando_n1 = SnnBase.Synapse(0.001, 1.0) # delay / efficiency
 rando.add_synapse(syn_rando_n1)

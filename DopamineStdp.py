@@ -15,6 +15,7 @@ import SnnBase
 #          exch: managers get reward messages
 #      that would work and would keep managers from having to message syns
 #      it would also clean up DopSyn a little too, because right now it's accumulating r, the external reward
+#      it would also remove an order-ambiguity about when in the exchange step the reward manager's exchange method is called
 
 class DopamineStdpSynapse:
     def __init__(self, delay, efficiency, min_efficiency, max_efficiency):
@@ -64,24 +65,46 @@ class DopamineStdpSynapse:
         # apply to tag (c) rather than efficiency directly
         self.c += self.P * self.max_efficiency
         
-    def prepare(self):
-        # apply r, modify efficiency and reset r
-        # because reward signal might happen at any point during previous step's exchange
-    
-        # apply tag
-        self.efficiency += self.r * self.c
+#==============================================================================
+#     def prepare(self):
+#         # apply r, modify efficiency and reset r
+#         # because reward signal might happen at any point during previous step's exchange
+#     
+#         # apply tag
+#         self.efficiency += self.r * self.c
+#         
+#         # clamp to allowed range
+#         if self.efficiency > self.max_efficiency:
+#             self.efficiency = self.max_efficiency
+#         elif self.efficiency < self.min_efficiency:
+#             self.efficiency = self.min_efficiency            
+#             
+#         print(str(self.r), str(self.c), str(self.efficiency))
+#         # reset reward accumulator
+#         self.r = 0.0
+#         # NB: this model "rests at 0", but not all models do.
+#==============================================================================
         
+    # TODO: most-right sol'n might be what the STDP synapse does.
+    #       it carries the reward and applies it during Pre        
+        
+    def step(self, dt):
+        # moved to step because r*c needs to be multilied by dt
+        # should work, as long as spike exchanges only happen during exchange step
+    
+        # apply (time-adjusted!) tag
+        self.efficiency += self.r * self.c * dt
+         
         # clamp to allowed range
         if self.efficiency > self.max_efficiency:
             self.efficiency = self.max_efficiency
         elif self.efficiency < self.min_efficiency:
-            self.efficiency = self.min_efficiency
-            
+            self.efficiency = self.min_efficiency            
+             
+        print(str(self.r), str(self.c), str(self.efficiency))
         # reset reward accumulator
-        self.r = 0.0
-        # NB: this model "rests at 0", but not all models do.
+        self.r = 0.0        
         
-    def step(self, dt):
         # M, P and c exponentially decay to 0
         delta_M = -1.0 * self.M * (dt / self.tau_m)
         self.M += delta_M
@@ -112,6 +135,7 @@ class DopamineStdpSynapse:
                 
     def reward(self, r):
         self.r += r # accumulate reward signals
+                    # note: r is reset to 0 in step
         
     @staticmethod
     def connect(source, target, delay, efficiency, min_efficiency, max_efficiency, reward_manager=None):
@@ -119,6 +143,8 @@ class DopamineStdpSynapse:
         
         s.add_target(target)
         source.add_synapse(s)
+        
+        target.add_spike_listener(s)
         
         if reward_manager is not None:
             reward_manager.add_rewardable(s)

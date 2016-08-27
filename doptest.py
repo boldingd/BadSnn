@@ -240,7 +240,7 @@ class SymbolTracker:
 rm = DopamineStdp.RewardManager(equilibrium=0.01, tau=15.0)
 rm.r = 2.0 # DEBUG
 
-rsampler = SnnBase.Sampler(rm, 1.0 / 100.0, "reward")
+rsampler = SnnBase.Sampler(rm, 100.0, "reward")
 
 n = SpikingNetwork.Network()
 c1 = SpikingNetwork.create_pulsar_cluster(count=10, total_power=90.0, freq_min=1.0, freq_max=10.0)

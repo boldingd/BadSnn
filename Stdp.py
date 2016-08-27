@@ -86,7 +86,7 @@ class StdpSynapse:
                 
             self.efficiency_update = 0.0
             
-    def step(self, dt):
+    def step(self, dt):        
         # M and P exponentially decay to 0
         delta_M = -1.0 * self.M * (dt / self.tau_m)
         self.M += delta_M
@@ -118,6 +118,8 @@ class StdpSynapse:
         
         s.add_target(target)
         source.add_synapse(s)
+        
+        target.add_spike_listener(s)
         
         return s
 

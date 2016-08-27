@@ -331,9 +331,10 @@ class Sample:
         self.charge = charge
 
 class Sampler:
-    def __init__(self, source, interval, name=None):
+    def __init__(self, source, frequency, name=None):
         self.source = source
-        self.interval = interval
+        #self.frequency = frequency
+        self.interval = 1.0 / frequency
 
         self.remaining = 0.0 # have samplers record on first tick
 
@@ -456,7 +457,6 @@ class CallbackManager:
 
     def add_callback(self, callback):
         self.callbacks.append(callback)
-
             
 def linspace(minimum, maximum, count):
     """a lazy reimplementation of linspace
