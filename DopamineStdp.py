@@ -101,7 +101,6 @@ class DopamineStdpSynapse:
         elif self.efficiency < self.min_efficiency:
             self.efficiency = self.min_efficiency            
              
-        print(str(self.r), str(self.c), str(self.efficiency))
         # reset reward accumulator
         self.r = 0.0        
         
