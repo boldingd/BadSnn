@@ -88,43 +88,48 @@ class FrequencyAttractorRewarder:
         
         self.reward_manager.add_reward( self._reward )
 
-
-pulsar_5hz = SnnBase.Pulsar(magnitude=30.0, frequency=5.0)
-
-spiker = SnnBase.SpikingNeuron(threshold=50.0, magnitude=30.0, leak_eql=0.0, leak_tau=0.75)
-
-counter = SnnBase.Counter(name="spikes")
-spiker.add_spike_listener(counter)
-
-#rmanager = DopamineStdp.RewardManager(equilibrium=0.1, tau=3.0)
+#### manager and rewarder
 rmanager = DopamineStdp.RewardManager(equilibrium=0.0, tau=3.0)
 
-#rewarder = SpikeRewarder(rmanager, 0.1)
-rewarder = FrequencyAttractorRewarder(rmanager, target_frequency=4.0, window_length=3.0, reward_increment=0.03)
+rewarder = FrequencyAttractorRewarder(rmanager, target_frequency=7.5, window_length=3.0, reward_increment=0.05)
 
-dsyn_pulsar_spiker = DopamineStdp.DopamineStdpSynapse.connect(source = pulsar_5hz, target = spiker, delay=0.0, efficiency = 0.6, min_efficiency = 0.3, max_efficiency = 1.7, reward_manager=rmanager)
-syn_spiker_rewarder = SnnBase.Synapse.connect(source = spiker, target = rewarder, delay = 0.0, efficiency = 1.0)
+#### build the network
+pcluster = SpikingNetwork.create_pulsar_cluster(count=10, total_power=300.0, freq_min=1.0, freq_max=20.0)
 
-syn_sampler = SnnBase.Sampler(source=dsyn_pulsar_spiker, frequency = 50.0, name="synapse efficiency")
+spiker = SnnBase.SpikingNeuron(threshold=50.0, magnitude=30.0, leak_eql=0.0, leak_tau=0.75)
+scluster = SpikingNetwork.Cluster()
+scluster.add_neuron(spiker)
 
-dop_sampler = SnnBase.Sampler(source=rmanager, frequency = 50.0, name="dopamine level")
+network = SpikingNetwork.Network()
+network.add_cluster(pcluster)
+network.add_cluster(scluster)
 
-# set up callbacks
+dcon = SpikingNetwork.DopamineStdpSynapseConnector(delay=0.0, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rmanager)
+network.connect_clusters(source_cluster=pcluster, target_cluster=scluster, connector=dcon)
+
+#### connect the output spiker to the rewarder
+outsyn = SnnBase.Synapse.connect(source = spiker, target = rewarder, delay = 0.0, efficiency = 1.0)
+
+#### build entities and run sim
+entities = network.get_entities()
+
+#### set up callbacks
+sample_dsyn = None
+for en in entities:
+    if issubclass(type(en), DopamineStdp.DopamineStdpSynapse):
+        sample_dsyn = en
+        break
+if sample_dsyn is None:
+    raise Exception("No synapses found")
+    
 def print_samples(t):
     freq = len(rewarder._spike_waits) / rewarder.window_length
-    print("{} {} {}".format(t, freq, rmanager.get_sample()))
+    print("{} {} {} {}".format(t, freq, rmanager.get_sample(), sample_dsyn.efficiency))
 
 cbm = SnnBase.CallbackManager(2)
-#cbm.add_callback(lambda t: print(str(t)))
-cbm.add_callback(print_samples)    
-
-entities = [pulsar_5hz, spiker, counter, dsyn_pulsar_spiker, rmanager, rewarder, syn_spiker_rewarder, syn_sampler, dop_sampler, cbm]
+cbm.add_callback(print_samples)   
+    
+entities += [rmanager, rewarder, outsyn, cbm]
 SnnBase.run_simulation(200.0, 1.0 / 2000.0, entities)
-
-counter.report()
-
-syn_sampler.report()
-
-dop_sampler.report()
 
 print(str("done"))

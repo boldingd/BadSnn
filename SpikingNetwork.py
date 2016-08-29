@@ -7,6 +7,7 @@ Created on Wed Mar 30 20:08:47 2016
 
 import SnnBase
 import Stdp
+import DopamineStdp
 import random
 
 
@@ -85,7 +86,21 @@ class StdpSynapseConnector:
         syn = Stdp.StdpSynapse.connect(source=source, target=target, delay=self.delay, efficiency=e, min_efficiency=self.min_efficiency, max_efficiency=self.max_efficiency)
         
         return syn
-            
+
+class DopamineStdpSynapseConnector:
+    def __init__(self, delay, min_efficiency, max_efficiency, reward_manager):
+        self.delay = delay
+        self.min_efficiency = min_efficiency
+        self.max_efficiency = max_efficiency
+        self.reward_manager = reward_manager
+    
+    def connect(self, source, target):
+        e = random.uniform(self.min_efficiency, self.max_efficiency)
+        
+        syn = DopamineStdp.DopamineStdpSynapse.connect(source=source, target=target, delay=self.delay, efficiency=e, min_efficiency=self.min_efficiency, max_efficiency=self.max_efficiency, reward_manager=self.reward_manager)
+        
+        return syn
+        
 # NOTE: Network manages connection, but not state.  For now, just yield your entities and let something else run the sim
 class Network:
     def __init__(self):
