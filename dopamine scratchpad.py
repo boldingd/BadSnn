@@ -91,12 +91,12 @@ class FrequencyAttractorRewarder:
 #### manager and rewarder
 rmanager = DopamineStdp.RewardManager(equilibrium=0.0, tau=3.0)
 
-rewarder = FrequencyAttractorRewarder(rmanager, target_frequency=7.5, window_length=3.0, reward_increment=0.05)
+rewarder = FrequencyAttractorRewarder(rmanager, target_frequency=9.0, window_length=3.0, reward_increment=0.05)
 
 #### build the network
-pcluster = SpikingNetwork.create_pulsar_cluster(count=10, total_power=300.0, freq_min=1.0, freq_max=20.0)
+pcluster = SpikingNetwork.create_pulsar_cluster(count=10, total_power=500.0, freq_min=1.0, freq_max=20.0)
 
-spiker = SnnBase.SpikingNeuron(threshold=50.0, magnitude=30.0, leak_eql=0.0, leak_tau=0.75)
+spiker = SnnBase.SpikingNeuron(threshold=50.0, magnitude=30.0, leak_eql=0.0, leak_tau=0.5)
 scluster = SpikingNetwork.Cluster()
 scluster.add_neuron(spiker)
 
@@ -104,7 +104,7 @@ network = SpikingNetwork.Network()
 network.add_cluster(pcluster)
 network.add_cluster(scluster)
 
-dcon = SpikingNetwork.DopamineStdpSynapseConnector(delay=0.0, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rmanager)
+dcon = SpikingNetwork.DopamineStdpSynapseConnector(delay=0.0, min_efficiency=0.1, max_efficiency=1.9, reward_manager=rmanager)
 network.connect_clusters(source_cluster=pcluster, target_cluster=scluster, connector=dcon)
 
 #### connect the output spiker to the rewarder

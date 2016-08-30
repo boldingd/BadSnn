@@ -22,7 +22,7 @@ op.add_option("-f", "--freq", dest="freq",
               type="float")
 op.add_option("-t", "--time", dest="time",
               help="set the simulation duration",
-              default=2000,
+              default=200,
               type="float")
 (opts, args) = op.parse_args() # uses sys.argv[1:] by default
 freq = opts.freq
@@ -130,14 +130,16 @@ class Trainer:
                 self._state = Trainer._delaying
                 self.remaining_delay = self.delay
                 self.remaining_window = 0.0 # clear any window-timer that's running
-                self.reward = 1.0 # small reward for getting this right
+                self.reward = 0.05 # small reward for getting this right
+            else: # DEBUG
+                self.reward = -0.05
         elif self._state == Trainer._delaying:
             if self.a_received or self.b_received:
                 self._state = Trainer._delaying
                 # clear any running timers
                 self.remaining_delay = 0.0
                 self.remaining_window = 0.0
-                self.reward = -1.0
+                self.reward = -0.1
             elif self.delay_expired:
                 self._state = Trainer._b_listening
                 self.remaining_delay = 0.0 # we already know this if delay_expired is true, but being consistent
@@ -147,17 +149,17 @@ class Trainer:
                 self._state = Trainer._start
                 self.remaining_delay = 0.0
                 self.remaining_window = 0.0
-                self.reward = -1.0
+                self.reward = -0.1
             elif self.b_received: # reward and reset
                 self._state = Trainer._start
                 self.remaining_delay = 0.0
                 self.remaining_window = 0.0
-                self.reward = 1.0 # large reward for getting this right
+                self.reward = 0.1 # large reward for getting this right
             elif self.window_expired: # reset, but only if we didn't also get b
                 self._state = Trainer._start
                 self.remaining_delay = 0.0
                 self.remaining_window = 0.0
-                self.reward = -1.0
+                self.reward = -0.1
 
         # clear flags
         self.delay_expired = False
@@ -237,8 +239,8 @@ class SymbolTracker:
                     ofile.write(str(symbol) + " ")
                 ofile.write("\n")
 
-rm = DopamineStdp.RewardManager(equilibrium=0.01, tau=15.0)
-rm.r = 2.0 # DEBUG
+rm = DopamineStdp.RewardManager(equilibrium=0.0, tau=5.0)
+#rm.r = 0.0 # DEBUG
 
 rsampler = SnnBase.Sampler(rm, 100.0, "reward")
 
@@ -247,7 +249,7 @@ c1 = SpikingNetwork.create_pulsar_cluster(count=10, total_power=90.0, freq_min=1
 c2 = SpikingNetwork.create_spiking_cluster(count=8, threshold=50.0, magnitude=20.0, leak_eql=0.0, leak_tau=1.0) # count / thres / mag / leak_eql / tau
 n.add_cluster(c1)
 n.add_cluster(c2)
-con = DopamineSynapseConnector(delay=0.001, min_efficiency=0.25, max_efficiency=1.75, reward_manager=rm)
+con = DopamineSynapseConnector(delay=0.0, min_efficiency=0.1, max_efficiency=1.9, reward_manager=rm)
 n.connect_clusters(c1, c2, con)
 
 out_a = SnnBase.SpikingNeuron(60.0, 20.0, 0.0, 0.5) # thresh / mag / eql / tau
@@ -259,16 +261,16 @@ cout.add_neuron(out_b)
 n.connect_clusters(c2, cout, con)
 
 count_a = SnnBase.Counter(name="a spikes")
-count_a_syn = SnnBase.Synapse(0.0001, 1.0)
+count_a_syn = SnnBase.Synapse(0.0, 1.0)
 out_a.add_synapse(count_a_syn)
 count_a_syn.add_target(count_a)
 
 count_b = SnnBase.Counter(name="b spikes")
-count_b_syn = SnnBase.Synapse(0.0001, 1.0)
+count_b_syn = SnnBase.Synapse(0.0, 1.0)
 out_b.add_synapse(count_b_syn)
 count_b_syn.add_target(count_b)
 
-t = Trainer(rm, out_a, out_b, delay=1.0, window=1.0)
+t = Trainer(rm, out_a, out_b, delay=0.5, window=1.0)
 s = SymbolTracker(name="symbols")
 t.add_listener(s)
 
