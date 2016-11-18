@@ -1,3 +1,4 @@
+#! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 Created on Mon Apr 11 18:19:21 2016
@@ -9,6 +10,13 @@ import SnnBase
 import SpikingNetwork
 import DopamineStdp
 
+import sys
+
+try:
+    freq = int(sys.argv[1])
+except Exception as e:
+    print("Must provide target freq as first positional argument")
+    sys.exit(1)
 
 class SpikeRewarder:
     """ticks up the dopamine manager every time a spike is received"""
@@ -91,7 +99,8 @@ class FrequencyAttractorRewarder:
 #### manager and rewarder
 rmanager = DopamineStdp.RewardManager(equilibrium=0.0, tau=3.0)
 
-rewarder = FrequencyAttractorRewarder(rmanager, target_frequency=9.0, window_length=3.0, reward_increment=0.05)
+# set target frequency from command line arg above
+rewarder = FrequencyAttractorRewarder(rmanager, target_frequency=freq, window_length=3.0, reward_increment=0.05)
 
 #### build the network
 pcluster = SpikingNetwork.create_pulsar_cluster(count=10, total_power=500.0, freq_min=1.0, freq_max=20.0)
@@ -124,7 +133,7 @@ if sample_dsyn is None:
     
 def print_samples(t):
     freq = len(rewarder._spike_waits) / rewarder.window_length
-    print("{} {} {} {}".format(t, freq, rmanager.get_sample(), sample_dsyn.efficiency))
+    print("{} {}".format(t, freq))
 
 cbm = SnnBase.CallbackManager(2)
 cbm.add_callback(print_samples)   
@@ -133,3 +142,4 @@ entities += [rmanager, rewarder, outsyn, cbm]
 SnnBase.run_simulation(200.0, 1.0 / 2000.0, entities)
 
 print(str("done"))
+
