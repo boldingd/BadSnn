@@ -123,104 +123,110 @@ class StdpSynapse:
         
         return s
 
-#def InhibitoryStdpFunction(t):
-#    # -0.5 * tanh(abs(x) - e)
-#    # seems about reasonable
-#    accm = abs(t) - math.e
-#    accm *= 0.5
-#    accm = math.tanh(accm)
-#    accm  /= -2.0
+##def InhibitoryStdpFunction(t):
+##    # -0.5 * tanh(abs(x) - e)
+##    # seems about reasonable
+##    accm = abs(t) - math.e
+##    accm *= 0.5
+##    accm = math.tanh(accm)
+##    accm  /= -2.0
+##    
+##    return accm
+#
+## after experimenting with graph.tk and wikipedia, either
+##  - sech(x^2), or
+##  - e^(-x*x)
+## might also work
+## handily, both are symetric about 0, and so no abs is required
+#    
+#def InhibitoryStdpFunction(t, c=math.e):
+#    accm = math.tanh(c - t)
+#    accm += math.tanh(c + t)
+#    accm -= 1
+#    
+#    # smooth, differentiable function with a bulge in the middle
 #    
 #    return accm
-    
-def InhibitoryStdpFunction(t, c=math.e):
-    accm = math.tanh(c - t)
-    accm += math.tanh(c + t)
-    accm -= 1
-    
-    # smooth, differentiable function with a bulge in the middle
-    
-    return accm
-
-class InhibitoryStdpSynapse:
-    def __init__(self, delay, efficiency, min_efficiency, max_efficiency):
-        self.delay = delay
-        self.min_efficiency = min_efficiency
-        self.max_efficiency = max_efficiency
-        
-        self.efficiency = efficiency
-        
-        self.T = 0.0
-        self.A_t = 0.1
-        self.tau_t = 0.0025
-        
-        self.waiting_spikes = []
-        self.outgoing_spikes = []
-        
-        self.targets = []
-        
-        self.efficiency_update = 0.0        
-        
-    def add_spike(self, magnitude):
-        self.efficiency_update += (1.0 / math.cosh(self.T)) - 0.5 # sech(x) - 0.5
-        self.T += self.A_t
-            
-        ds = SnnBase.DelayedSpike(self.delay, magnitude)
-        
-        self.waiting_spikes.append(ds)
-    
-    def add_target(self, target):
-        self.targets.append(target)
-        
-    def get_sample(self):
-        return self.efficiency
-        
-    def notify_of_spike(self):
-        self.efficiency_update += (1.0 / math.cosh(self.T)) - 0.5 # sech(x) - 0.5
-        
-    def prepare(self):
-        # apply efficiency change from last cycle before step / exchange
-        if self.efficiency_update != 0.0:
-            self.efficiency += self.efficiency_update
-            
-            # clip to allowed range
-            if self.efficiency > self.max_efficiency:
-                self.efficiency = self.max_efficiency
-            elif self.efficiency < self.min_efficiency:
-                self.efficiency = self.min_efficiency
-                
-            self.efficiency_update = 0.0
-            
-    def step(self, dt):        
-        # M and P exponentially decay to 0
-        delta_T = -1.0 * self.T * (dt / self.tau_t)
-        self.T += delta_T
-        
-        # spike, as basic delayed neuron
-        temp_spikes = self.waiting_spikes
-        self.waiting_spikes = []
-        self.outgoing_spikes = []
-
-        for spike in temp_spikes:
-            spike.remaining_delay -= dt
-            
-            if spike.remaining_delay <= 0.0:
-                self.outgoing_spikes.append(spike)
-            else:
-                self.waiting_spikes.append(spike)
-                
-    def exchange(self):
-        for s in self.outgoing_spikes:
-            for t in self.targets:
-                t.add_spike(self.efficiency * s.magnitude)
-                
-    @staticmethod
-    def connect(source, target, delay, efficiency, min_efficiency, max_efficiency):
-        s = InhibitoryStdpSynapse(delay, efficiency, min_efficiency, max_efficiency)
-        
-        s.add_target(target)
-        source.add_synapse(s)
-        
-        target.add_spike_listener(s)
-        
-        return s
+#
+#class InhibitoryStdpSynapse:
+#    def __init__(self, delay, efficiency, min_efficiency, max_efficiency):
+#        self.delay = delay
+#        self.min_efficiency = min_efficiency
+#        self.max_efficiency = max_efficiency
+#        
+#        self.efficiency = efficiency
+#        
+#        self.T = 0.0
+#        self.A_t = 0.1
+#        self.tau_t = 0.0025
+#        
+#        self.waiting_spikes = []
+#        self.outgoing_spikes = []
+#        
+#        self.targets = []
+#        
+#        self.efficiency_update = 0.0        
+#        
+#    def add_spike(self, magnitude):
+#        self.efficiency_update += (1.0 / math.cosh(self.T)) - 0.5 # sech(x) - 0.5
+#        self.T += self.A_t
+#            
+#        ds = SnnBase.DelayedSpike(self.delay, magnitude)
+#        
+#        self.waiting_spikes.append(ds)
+#    
+#    def add_target(self, target):
+#        self.targets.append(target)
+#        
+#    def get_sample(self):
+#        return self.efficiency
+#        
+#    def notify_of_spike(self):
+#        self.efficiency_update += (1.0 / math.cosh(self.T)) - 0.5 # sech(x) - 0.5
+#        
+#    def prepare(self):
+#        # apply efficiency change from last cycle before step / exchange
+#        if self.efficiency_update != 0.0:
+#            self.efficiency += self.efficiency_update
+#            
+#            # clip to allowed range
+#            if self.efficiency > self.max_efficiency:
+#                self.efficiency = self.max_efficiency
+#            elif self.efficiency < self.min_efficiency:
+#                self.efficiency = self.min_efficiency
+#                
+#            self.efficiency_update = 0.0
+#            
+#    def step(self, dt):        
+#        # M and P exponentially decay to 0
+#        delta_T = -1.0 * self.T * (dt / self.tau_t)
+#        self.T += delta_T
+#        
+#        # spike, as basic delayed neuron
+#        temp_spikes = self.waiting_spikes
+#        self.waiting_spikes = []
+#        self.outgoing_spikes = []
+#
+#        for spike in temp_spikes:
+#            spike.remaining_delay -= dt
+#            
+#            if spike.remaining_delay <= 0.0:
+#                self.outgoing_spikes.append(spike)
+#            else:
+#                self.waiting_spikes.append(spike)
+#                
+#    def exchange(self):
+#        for s in self.outgoing_spikes:
+#            for t in self.targets:
+#                t.add_spike(self.efficiency * s.magnitude)
+#                
+#    @staticmethod
+#    def connect(source, target, delay, efficiency, min_efficiency, max_efficiency):
+#        s = InhibitoryStdpSynapse(delay, efficiency, min_efficiency, max_efficiency)
+#        
+#        s.add_target(target)
+#        source.add_synapse(s)
+#        
+#        target.add_spike_listener(s)
+#        
+#        return s
