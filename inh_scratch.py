@@ -190,6 +190,11 @@ class NoisyDopamineSynapse(DopamineStdp.DopamineStdpSynapse):
         
         self.total_abs_error = 0.0
 
+        self.wait = 1.0
+        self._wait = 0.0
+
+        self.err_eql = 0.0
+
     # assume error is normalized to [0,1]
     def set_total_abs_error(self, error):
         self.total_abs_error = error
@@ -197,8 +202,16 @@ class NoisyDopamineSynapse(DopamineStdp.DopamineStdpSynapse):
     def step(self, dt):
         super().step(dt)
 
-        n = random.uniform(-1, 1)
-        self.efficiency += self.total_abs_error * n * dt
+        if self._wait > 0.0:
+            self._wait -= dt
+        else:
+            self._wait = self.wait
+            #self.rand_val = random.uniform(-1.0, 1.0)
+            self.err_eql = random.choice([self.max_efficiency, self.min_efficiency])
+
+#        n = random.uniform(-1, 1)
+#        self.efficiency += self.total_abs_error * n * dt
+        self.efficiency += self.total_abs_error * (dt / (2 * self.wait)) * (self.efficiency - self.err_eql)
 
     @staticmethod
     def connect(source, target, delay, efficiency, min_efficiency, max_efficiency, reward_manager=None):
@@ -460,7 +473,7 @@ class ErrorManager:
         elif self.t2 == False and self.r2.get_is_high() == True:
             r -= 0.5
         
-        self.rmanager.set_reql(r) # actually only works with the EqlRewardManager
+        self.rmanager.set_reql(0.15 * r) # actually only works with the EqlRewardManager
 
 
         total_error = 0.0
@@ -589,16 +602,22 @@ t_2 = TogglePulsar(magnitude=30.0, frequency=15.0)
 
 
 #rm = DopamineStdp.RewardManager(equilibrium=0.0, tau=15.0)
-rm = EqlRewardManager(0.0, 4.0) #dopamine time-dynamics are slow
+rm = EqlRewardManager(0.0, 0.25) #dopamine time-dynamics are slow # ah, a major problem was that r needs to very very quickly, almost immediately.  Derp, I dumb
 te = TotalErrorManager()
 
-syn_tog1_ex1 = DopamineStdp.DopamineStdpSynapse.connect(source=t_1, target=ex_1, delay=0.0, efficiency=1.0, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rm)
-syn_tog2_ex1 = DopamineStdp.DopamineStdpSynapse.connect(source=t_2, target=ex_1, delay=0.0, efficiency=1.0, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rm)
+#syn_tog1_ex1 = DopamineStdp.DopamineStdpSynapse.connect(source=t_1, target=ex_1, delay=0.0, efficiency=1.0, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rm)
+#syn_tog2_ex1 = DopamineStdp.DopamineStdpSynapse.connect(source=t_2, target=ex_1, delay=0.0, efficiency=1.0, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rm)
+syn_tog1_ex1 = NoisyDopamineSynapse.connect(source=t_1, target=ex_1, delay=0.0, efficiency=0.7, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rm)
+te.add_error_listener(syn_tog1_ex1)
+syn_tog2_ex1 = NoisyDopamineSynapse.connect(source=t_2, target=ex_1, delay=0.0, efficiency=1.3, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rm)
+te.add_error_listener(syn_tog2_ex1)
 syn_ex1_rt1  = SnnBase.Synapse.connect(source=ex_1, target=rt_1, delay=0.0, efficiency=1.0)
 
-syn_tog1_ex2 = DopamineStdp.DopamineStdpSynapse.connect(source=t_1, target=ex_2, delay=0.0, efficiency=1.0, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rm)
+#syn_tog1_ex2 = DopamineStdp.DopamineStdpSynapse.connect(source=t_1, target=ex_2, delay=0.0, efficiency=1.0, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rm)
+syn_tog1_ex2 = NoisyDopamineSynapse.connect(source=t_1, target=ex_2, delay=0.0, efficiency=1.3, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rm)
+te.add_error_listener(syn_tog1_ex2)
 #syn_tog2_ex2 = DopamineStdp.DopamineStdpSynapse.connect(source=t_2, target=ex_2, delay=0.0, efficiency=1.0, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rm)
-syn_tog2_ex2 = NoisyDopamineSynapse.connect(source=t_2, target=ex_2, delay=0.0, efficiency=1.0, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rm)
+syn_tog2_ex2 = NoisyDopamineSynapse.connect(source=t_2, target=ex_2, delay=0.0, efficiency=0.7, min_efficiency=0.3, max_efficiency=1.7, reward_manager=rm)
 te.add_error_listener(syn_tog2_ex2)
 syn_ex2_rt2  = SnnBase.Synapse.connect(source=ex_2, target=rt_2, delay=0.0, efficiency=1.0)
 
@@ -617,9 +636,10 @@ em = ErrorManager(rt_1, rt_2, rm, te)
 sd.add_switch_listener(em)
 
 def pr_sample(t):
-    print("{:5g}:  {} {} {} {}".format(t, t_1.get_is_active(), t_2.get_is_active(), rt_1.get_is_high(), rt_2.get_is_high()))
+    print("{:5g}:  [{} {}]  =>  {} {}".format(t, t_1.get_is_active(), t_2.get_is_active(), rt_1.get_is_high(), rt_2.get_is_high()))
 
 ofile = open("dop_syn.dat", "w")
+ofile_rlvl_elvl = open("rlvl.dat", "w")
 
 
 clock = Clock()
@@ -629,14 +649,16 @@ cb_manager.add_callback(pr_sample)
 #cb_manager.add_callback(lambda t: print("{}:  {}".format(t, ex_1.get_sample())))
 #cb_manager.add_callback(lambda t: print("{}:  {}".format(t, syn_ex2_inh.get_sample())))
 cb_manager.add_callback(lambda t: ofile.write("{}:  {}\n".format(t, syn_ex2_inh.get_sample())))
+cb_manager.add_callback(lambda t: ofile_rlvl_elvl.write("{}: {} {} {}\n".format(t, rm.r, te.total_error, syn_tog2_ex2.efficiency)))
 
 ens = [ex_1, ex_2, inh, rt_1, rt_2, t_1, t_2, sd,
        syn_tog1_ex1, syn_tog2_ex1, syn_ex1_rt1, syn_tog1_ex2, syn_tog2_ex2, syn_ex2_rt2,
        syn_ex1_inh, syn_ex2_inh, syn_inh_ex1, syn_inh_ex2,
        rm, em, te,
        clock, cb_manager]
-SnnBase.run_simulation(100.0, 1.0 / 200.0, ens)
+SnnBase.run_simulation(500.0, 1.0 / 1200.0, ens)
 
 
 ofile.close()
+ofile_rlvl_elvl.close()
 
