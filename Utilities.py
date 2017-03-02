@@ -5,6 +5,8 @@ Created on Thu Mar  2 03:17:04 2017
 @author: boldingd
 """
 
+import random
+
 
 class ThresholdTracker:
     """A class that counts the firing-rate for its inputs.
@@ -47,11 +49,22 @@ class ThresholdTracker:
 
     def add_spike(self, magnitude):
         self.remaining_times.append(self.window)
+        
+    # also support "notify protocol"
+    def notify_of_spike(self):
+        """Do not connect the same output with a synapse an via notify.
+        that will result in that object's spikes getting counted twice.
+        """
+        self.remaining_times.append(self.window)
 
     def add_change_callback(self, callback):
         self.callbacks.append(callback)
 
     def get_is_high(self):
+        return self._high_state
+        
+    @property
+    def high(self):
         return self._high_state
 
     def get_freq(self):
