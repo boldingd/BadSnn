@@ -11,7 +11,7 @@ import random
 #window needs to be at least 2/freq, and preferable more than that
 #however, a long window will also lead to very delayed responses when frequencies shift
 class FrequencyRewarder:
-    def __init__(self, target_freq, window, reward_wait=None, base_r=0.2):
+    def __init__(self, target_freq, window, reward_wait=None, base_r=0.1):
         self.target_freq = target_freq
         self._spike_waits = list()
         self.window = window
@@ -52,7 +52,7 @@ class FrequencyRewarder:
                 de = e_cur - e_prev
 
                 if de <= -1.0: # if we made a large improvement
-                    self._r = 2.0 * self._base_r
+                    self._r = 4.0 * self._base_r
                 elif de >= 1.0: # if we actually got worse
                     self._r = 0.0
                 else: # if our error is ~~stable
@@ -123,7 +123,7 @@ entities = list()
 # build the network
 output = SnnBase.SpikingNeuron(50.0, 30.0, 0.0, 1.0)
 
-rewarder = FrequencyRewarder(target_freq=5.0, window=2.0)
+rewarder = FrequencyRewarder(target_freq=10.0, window=10.0)
 output.add_spike_listener(rewarder)
 
 entities.append(output)
@@ -131,7 +131,7 @@ entities.append(rewarder)
 
 
 # build stochastic pulsars
-power = 100.0
+power = 200.0
 
 freq_min = 1.0
 freq_max = 20.0
@@ -164,4 +164,4 @@ cb = SnnBase.CallbackManager(freq=20.0)
 cb.add_callback(lambda t: print("{}: {}r {}hz".format(t, rewarder._r, rewarder._last_freq)))
 entities.append(cb)
 
-SnnBase.run_simulation(100.0, 1.0 / 1000.0, entities)
+SnnBase.run_simulation(1000.0, 1.0 / 1000.0, entities)

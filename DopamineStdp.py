@@ -31,7 +31,7 @@ class DopamineStdpSynapse:
         
         self.P = 0.0 # LTP term
         self.A_p = 0.015
-        self.tau_p = 0.0025
+        self.tau_p = 0.0025 # requires the simulation is run at at least 400Hz
         
         self.waiting_spikes = []
         self.outgoing_spikes = []
@@ -47,7 +47,7 @@ class DopamineStdpSynapse:
         
         # apply to tag (c) rather than efficiency directly
         self.c += self.M * self.max_efficiency
-            
+        
         ds = SnnBase.DelayedSpike(self.delay, magnitude)
         
         self.waiting_spikes.append(ds)
