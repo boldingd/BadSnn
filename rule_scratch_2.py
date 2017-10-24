@@ -349,12 +349,12 @@ class Manager:
     def step(self, dt):
         self._s_wait -= dt
 
+        self._r_wait -= dt # who cares if it's negative?
+
         if self._s_wait <= 0:
             self._s_wait = self.switch_wait
             self._r_wait = self.reward_wait
             self._toggle_change = True
-
-        self._r_wait -= dt # who cares if it's negative?
 
     def exchange(self):
         if self._toggle_change:
@@ -389,12 +389,12 @@ class Manager:
                 if self.rt_1.get_is_high():
                     r -= 0.01
 
-#            if self.t2 == True:
-#                if not self.rt_2.get_is_high():
-#                    r += 0.01
-#            else: # self.t2 is low
-#                if self.rt_1.get_is_high():
-#                    r -= 0.01
+            if self.t2 == True:
+                if not self.rt_2.get_is_high():
+                    r += 0.01
+            else: # self.t2 is low
+                if self.rt_1.get_is_high():
+                    r -= 0.01
 
             self._set_rewards(r)
 
@@ -621,24 +621,24 @@ mg.add_2_togglable(tog_23)
 entities = [tog_11, tog_12, tog_13, tog_21, tog_22, tog_23,
             ex_11, ex_12, ex_13, ex_21, ex_22, ex_23, rt_1, rt_2, mg]
 
-## connect each toggle to each excitatory neuron, using random weights
-#for t in [tog_11, tog_12, tog_13, tog_21, tog_22, tog_23]:
-#    for e in [ex_11, ex_12, ex_13, ex_21, ex_22, ex_23]:
+# connect each toggle to each excitatory neuron, using random weights
+for t in [tog_11, tog_12, tog_13, tog_21, tog_22, tog_23]:
+    for e in [ex_11, ex_12, ex_13, ex_21, ex_22, ex_23]:
+        w = random.uniform(0.3, 1.7)
+        syn = DopamineStdp.DopamineStdpSynapse.connect(source=t, target=e, delay=0.0, efficiency=w, min_efficiency=0.3, max_efficiency=1.7, reward_manager=mg)
+        entities.append(syn)
+
+#for t in [tog_11, tog_12, tog_13]:
+#    for e in [ex_11, ex_12, ex_13]:
 #        w = random.uniform(0.3, 1.7)
 #        syn = DopamineStdp.DopamineStdpSynapse.connect(source=t, target=e, delay=0.0, efficiency=w, min_efficiency=0.3, max_efficiency=1.7, reward_manager=mg)
 #        entities.append(syn)
-
-for t in [tog_11, tog_12, tog_13]:
-    for e in [ex_11, ex_12, ex_13]:
-        w = random.uniform(0.3, 1.7)
-        syn = DopamineStdp.DopamineStdpSynapse.connect(source=t, target=e, delay=0.0, efficiency=w, min_efficiency=0.3, max_efficiency=1.7, reward_manager=mg)
-        entities.append(syn)
-
-for t in [tog_21, tog_22, tog_23]:
-    for e in [ex_21, ex_22, ex_23]:
-        w = random.uniform(0.3, 1.7)
-        syn = DopamineStdp.DopamineStdpSynapse.connect(source=t, target=e, delay=0.0, efficiency=w, min_efficiency=0.3, max_efficiency=1.7, reward_manager=mg)
-        entities.append(syn)
+#
+#for t in [tog_21, tog_22, tog_23]:
+#    for e in [ex_21, ex_22, ex_23]:
+#        w = random.uniform(0.3, 1.7)
+#        syn = DopamineStdp.DopamineStdpSynapse.connect(source=t, target=e, delay=0.0, efficiency=w, min_efficiency=0.3, max_efficiency=1.7, reward_manager=mg)
+#        entities.append(syn)
 
 # connect each excitatory neuron to each rate tracker, with non-plastic synapses (weight is random, to drive asymmetry)
 #for e in [ex_11, ex_12, ex_13, ex_21, ex_22, ex_23]:
@@ -650,11 +650,13 @@ for t in [tog_21, tog_22, tog_23]:
 for e in [ex_11, ex_12, ex_13]:
     w = random.uniform(0.3, 1.7)
     syn = SnnBase.Synapse.connect(source=e, target=rt_1, delay=0.0, efficiency=w)
+    syn.tau_c = 1.0 #NOTE: make tau for tags a lot faster, so we're not using data from 10 seconds ago in the tag but not in the manager
     entities.append(syn)
 
 for e in [ex_21, ex_22, ex_23]:
     w = random.uniform(0.3, 1.7)
     syn = SnnBase.Synapse.connect(source=e, target=rt_2, delay=0.0, efficiency=w)
+    syn.tau_c = 1.0
     entities.append(syn)
 
 def pr_stren(t):
@@ -683,7 +685,7 @@ cm.add_callback(pr_status)
 cm.add_callback(pr_stren_all)
 entities.append(cm)
 
-SnnBase.run_simulation(600.0, 1.0 / 1200.0, entities)
+SnnBase.run_simulation(900.0, 1.0 / 1200.0, entities)
 
 ofile.close()
 

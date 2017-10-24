@@ -150,7 +150,8 @@ con = Controller(a_tracker, b_tracker)
 # variables --> outputs
 for v in [vpulse_a_1, vpulse_a_2, vpulse_b_1, vpulse_b_2]:
     for o in [output_a, output_b]:
-        syn = DopamineStdp.DopamineStdpSynapse.connect(source=v, target=o, delay=0.0, efficiency=0.7, min_efficiency=0.3, max_efficiency=1.7, reward_manager=con)
+        e = random.uniform(0.3, 1.7)
+        syn = DopamineStdp.DopamineStdpSynapse.connect(source=v, target=o, delay=0.0, efficiency=e, min_efficiency=0.3, max_efficiency=1.7, reward_manager=con)
         entities.append(syn)
 
 # outputs --> trackers
@@ -166,6 +167,11 @@ con.add_a_togglable(vpulse_a_2)
 con.add_b_togglable(vpulse_b_1)
 con.add_b_togglable(vpulse_b_2)
 
-entities += [vpulse_a_1, vpulse_a_2, vpulse_b_1, vpulse_b_2, output_a, output_b, a_tracker, b_tracker, con]
+
+cm = Utilities.CallbackManager(10.0)
+cm.add_callback(lambda t: print("{}: {}".format(t, con._r)))
+
+
+entities += [vpulse_a_1, vpulse_a_2, vpulse_b_1, vpulse_b_2, output_a, output_b, a_tracker, b_tracker, con, cm]
 
 SnnBase.run_simulation(stop_time=500.0, step= 1.0 / 1000.0, entities=entities)

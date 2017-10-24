@@ -33,7 +33,7 @@ class SpikingNeuron:
         delta = -1.0 * (self.charge - self.eql) * (self.tau_mult) * dt
         
         for current in self.currents:
-            delta += current.get_current() * dt # should probably be per unit time
+            delta += (current.eql - self.charge) * dt * current.conductance
             
         for spike in self.received_spikes:
             delta += spike
@@ -272,6 +272,18 @@ class DrivenPoissonSpiker:
     def add_spike_listener(self, listener):
         self.spike_listeners.append(listener)
 
+# TODO: there's an order-dependance if this thing steps before or after Synapses
+class Current:
+    """A trivial, constant current
+    has a step, because other currents might need to step
+    """
+    def __init__(self, eql, conductance):
+        self.eql = eql
+        self.conductance = conductance
+
+    def step(self, dt):
+        pass
+
 class SpikeRecord:
     def __init__(self, time, magnitude):
         self.time = time
@@ -431,32 +443,33 @@ class Delayer:
         else:
             self.entity.step(dt)
 
-class CallbackManager:
-    def __init__(self, freq):
-        self.t = 0.0
-        self.freq = freq
-        self.wait = 1.0 / freq
+## Moved to Utilities
+# class CallbackManager:
+#     def __init__(self, freq):
+#         self.t = 0.0
+#         self.freq = freq
+#         self.wait = 1.0 / freq
 
-        self.run_callbacks = False
-        self.callbacks = []
+#         self.run_callbacks = False
+#         self.callbacks = []
 
-    def step(self, dt):
-        self.t += dt
-        self.wait -= dt
+#     def step(self, dt):
+#         self.t += dt
+#         self.wait -= dt
 
-        if self.wait <= 0.0:
-            self.wait = 1.0 / self.freq
-            self.run_callbacks = True
+#         if self.wait <= 0.0:
+#             self.wait = 1.0 / self.freq
+#             self.run_callbacks = True
 
-    def exchange(self):
-        if self.run_callbacks:
-            self.run_callbacks = False
+#     def exchange(self):
+#         if self.run_callbacks:
+#             self.run_callbacks = False
 
-            for callback in self.callbacks:
-                callback(self.t)
+#             for callback in self.callbacks:
+#                 callback(self.t)
 
-    def add_callback(self, callback):
-        self.callbacks.append(callback)
+#     def add_callback(self, callback):
+#         self.callbacks.append(callback)
             
 def linspace(minimum, maximum, count):
     """a lazy reimplementation of linspace

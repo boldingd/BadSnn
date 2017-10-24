@@ -178,7 +178,7 @@ class VariableStochasticPulsar:
         
 class TogglePulsar:
     """A class that fires (deterministically) at a given firing rate.
-    IT can be turned off - in which case, it doesn't fire.
+    It can be turned off - in which case, it doesn't fire.
     """
     
     def __init__(self, magnitude, frequency):
@@ -240,3 +240,87 @@ class TogglePulsar:
 
     def get_is_active(self):
         return self._active
+        
+class ToggleCurrent:
+    """A toggle-able current
+    Conductance is a property, which will return whatever conductance is specified,
+    or 0.0 if inactive.
+
+    Starts inactive.
+    """
+
+    def __init__(self, eql, conductance):
+        self.eql = eql
+        
+        self._conductance = conductance
+
+        self.active = False # starts inactive for consistency with TogglePulsar
+
+    @property
+    def conductance(self):
+        if self.active:
+            return self._conductance
+        else:
+            return 0.0
+
+    def step(self, dt):
+        pass
+
+    def toggle(self):
+        """Call only during Exchange :S
+        """
+        self.active = not self.active
+
+class TimedCallback:
+    def __init__(self, time, callback):
+        self.time = time
+
+        self.callback = callback
+
+    def __call__(self, time):
+        self.callback(time)
+
+class CallbackManager:
+    """Manages callbacks - functions that run periodically throughout the simulation.
+    Supports callbacks run at a given frequency (each manager has one set frequency), and functions that run once at a specific time.
+    """
+
+    def __init__(self, freq):
+        self.t = 0.0
+        self.freq = freq
+        self.wait = 1.0 / freq
+
+        self.run_callbacks = False
+        self.callbacks = []
+        self.timed_callbacks = list()
+
+    def step(self, dt):
+        self.t += dt
+        self.wait -= dt
+
+        for tc in self.timed_callbacks:
+            tc.time -= dt
+
+        if self.wait <= 0.0:
+            self.wait = 1.0 / self.freq
+            self.run_callbacks = True
+
+    def exchange(self):
+        if self.run_callbacks:
+            self.run_callbacks = False
+
+            for callback in self.callbacks:
+                callback(self.t)
+
+        for tc in self.timed_callbacks[:]:
+            if tc.time <= 0.0:
+                tc(self.t)
+
+                self.timed_callbacks.remove(tc)
+
+    def add_callback(self, callback):
+        self.callbacks.append(callback)
+
+    def add_timed_callback(self, time, callback):
+        self.timed_callbacks.append(TimedCallback(time, callback))
+        
